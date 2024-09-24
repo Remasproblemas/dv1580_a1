@@ -9,17 +9,21 @@ typedef struct MemoryBlock {
     struct MemoryBlock *next; //points to the next MemoryBlock
 } MemoryBlock;
 
-//Pointer to the head of the linked list of memory blocks
-MemoryBlock *global_block = NULL;
-
 //Keeps track of the metadata of the memory block.
 #define BLOCK_SIZE sizeof(MemoryBlock)
 
+//Pointer to the head of the linked list of memory blocks
+MemoryBlock *global_block = NULL;
+
 void mem_init(size_t size) {
+    if(size <= BLOCK_SIZE){
+        return;
+    }
+
     global_block = (MemoryBlock*) malloc(size);
 
     if(NULL == global_block){
-        printf("Tried to allocate memory.\n\"Do or don't, there is not try.\" - Yoda\n");
+        return;
     }
     
     global_block->size = size - BLOCK_SIZE;
@@ -31,20 +35,21 @@ void mem_init(size_t size) {
 MemoryBlock* find_free_block(size_t size) {
     MemoryBlock *current = global_block;
 
-    while(current && !(current->free && current->size >= size + BLOCK_SIZE)) {
+    while (current) {      
+        if (current->free == 1 && current->size >= size){
+            return current; 
+        }
         current = current->next;
     }
-    return current;
+    return NULL;
 }
 
 void* mem_alloc(size_t size){
-    MemoryBlock *block;
-
     if(size <= 0) {
         return NULL;    
     }
 
-    block = find_free_block(size);
+    MemoryBlock *block = find_free_block(size);
 
     if(!block) {
         return NULL;
@@ -53,15 +58,13 @@ void* mem_alloc(size_t size){
     block->free = 0;
 
     // Split the block if it's larger than needed
-    if(block->size > size + BLOCK_SIZE){
-        if (block->size - size >= BLOCK_SIZE) {
-            MemoryBlock *new_block = (MemoryBlock*)((char*)block + BLOCK_SIZE  + size); //(char*) is used so we move byte by byte instead of in chunks
-            new_block->size = block->size - size - BLOCK_SIZE;
-            new_block->free = 1;
-            new_block->next = block->next;   // Link the new block to the next
-            block->size = size;              // Adjust the current block size
-            block->next = new_block;
-        }
+    if(block->size >= size + BLOCK_SIZE){
+        MemoryBlock *new_block = (MemoryBlock*)((char*)block + BLOCK_SIZE + size); //(char*) is used so we move byte by byte instead of in chunks
+        new_block->size = block->size - size - BLOCK_SIZE;
+        new_block->free = 1;
+        new_block->next = block->next;   // Link the new block to the next
+        block->size = size;              // Adjust the current block size
+        block->next = new_block;
     }
 
     return (char*)block + BLOCK_SIZE;
@@ -114,12 +117,31 @@ void mem_deinit(){
         global_block = NULL;
     }
 }
+
+
 int main(void){
 
-    mem_init(1024);
-    void *block1 = mem_alloc(512);  
-    void *block2 = mem_alloc(512);  
-    
+    mem_init(1024); // Initialize the memory pool with 1KB
+
+    void* block1 = mem_alloc(512); // Allocate 512 bytes
+    if (block1 == NULL) {
+        printf("Allocation failed for block1\n");
+    }
+
+    void* block2 = mem_alloc(512); // Allocate another 512 bytes
+    if (block2 == NULL) {
+        printf("Allocation failed for block2\n");
+    }
+
+    void* block3 = mem_alloc(100); // Attempt to allocate more memory (should fail)
+    if (block3 == NULL) {
+        printf("Allocation failed for block3 as expected\n");
+    }
+
+    mem_free(block1); // Free the first block
+    mem_free(block2); // Free the second block
+    mem_deinit(); // Deinitialize memory
+
     return 0;
 }
 
