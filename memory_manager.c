@@ -56,7 +56,7 @@ void* mem_alloc(size_t size){
     if(size < 0) {
         return NULL;    
     }
-    size = size - BLOCK_SIZE;
+    size -= BLOCK_SIZE;
 
     MemoryBlock *block = find_free_block(size);
 
