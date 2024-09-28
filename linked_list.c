@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <assert.h>
 
   typedef struct Node {
@@ -12,15 +13,15 @@
 #define NODE_SIZE sizeof(Node)
 
 //This function sets up the list and prepares it for operations.
-void list_init(Node** head) {
-    mem_init(1024);
+void list_init(Node** head, size_t size) {
+    mem_init(size);
     if (!head) {
         *head = NULL;
     }
 }
 
 //Adds a new node with the specified data at end of the linked list. 
-void list_insert(Node** head, int data) {
+void list_insert(Node** head, uint16_t data) {
   if (*head == NULL) {
     Node *new_node = (Node*) mem_alloc(NODE_SIZE); // ALLOCATE MEMORY FOR THE NEW NODE
     if (new_node == NULL) {
@@ -52,7 +53,7 @@ void list_insert(Node** head, int data) {
 }
 
 // Inserts a new node with the specified data immediately after a given node.
-void list_insert_after(Node* prev_node, int data){
+void list_insert_after(Node* prev_node, uint16_t data){
   if (prev_node->next == NULL) {
     Node *new_node = (Node*) mem_alloc(NODE_SIZE); // ALLOCATE MEMORY FOR THE NEW NODE
     if (new_node == NULL) {
@@ -76,7 +77,7 @@ void list_insert_after(Node* prev_node, int data){
 }
 
 // Inserts a new node with the specified data immediately before a given node in the list. 
-void list_insert_before(Node** head, Node* next_node, int data){
+void list_insert_before(Node** head, Node* next_node, uint16_t data){
   if (*head == next_node) {
     Node *new_node = (Node*) mem_alloc(NODE_SIZE); // ALLOCATE MEMORY FOR THE NEW NODE
     if (new_node == NULL) {
@@ -107,7 +108,7 @@ void list_insert_before(Node** head, Node* next_node, int data){
 }
 
 // Removes a node with the specified data from the linked list.
-void list_delete(Node** head, int data){  
+void list_delete(Node** head, uint16_t data){  
   Node *current = *head;
 
   while (current->next->data != data){
@@ -120,7 +121,7 @@ void list_delete(Node** head, int data){
 }
 
 // Searches for a node with the specified data and returns a pointer to it.
-Node* list_search(Node** head, int data){
+Node* list_search(Node** head, uint16_t data){
   Node *current = *head;
   while (current->data != data){
     current = current->next;
@@ -213,35 +214,35 @@ void list_cleanup(Node** head) {
   mem_deinit();
 }
 
-int main(void){
+// int main(void){
 
 
-  printf("Size of Node %ld\n", NODE_SIZE);
-  Node *head = NULL;
-  list_init(&head);
-  list_insert(&head, 10);
-  list_insert(&head, 20);
-  list_display(&head);
-  Node *after_node = list_search(&head, 20);
-  list_insert_after(after_node, 40);
-  Node *before_node = list_search(&head, 40);
-  list_display(&head);
-  list_insert_before(&head, before_node, 30);
-  list_display(&head);
-  list_delete(&head, 30);
-  list_display(&head);
-  list_insert(&head, 50);
-  list_insert(&head, 60);
-  list_insert(&head, 70);
-  list_insert(&head, 80);
-  list_insert(&head, 90);
-  Node *end_node = list_search(&head, 60);
-  list_display_range(&head, NULL, NULL);
-  int node_count = list_count_nodes(&head);
-  printf("Node Count: %d\n", node_count);
-  list_cleanup(&head);
-  list_display(&head);
+//   printf("Size of Node %ld\n", NODE_SIZE);
+//   Node *head = NULL;
+//   list_init(&head, 1024);
+//   list_insert(&head, 10);
+//   list_insert(&head, 20);
+//   list_display(&head);
+//   Node *after_node = list_search(&head, 20);
+//   list_insert_after(after_node, 40);
+//   Node *before_node = list_search(&head, 40);
+//   list_display(&head);
+//   list_insert_before(&head, before_node, 30);
+//   list_display(&head);
+//   list_delete(&head, 30);
+//   list_display(&head);
+//   list_insert(&head, 50);
+//   list_insert(&head, 60);
+//   list_insert(&head, 70);
+//   list_insert(&head, 80);
+//   list_insert(&head, 90);
+//   Node *end_node = list_search(&head, 60);
+//   list_display_range(&head, NULL, NULL);
+//   int node_count = list_count_nodes(&head);
+//   printf("Node Count: %d\n", node_count);
+//   list_cleanup(&head);
+//   list_display(&head);
 
 
-  return 0;
-}
+//   return 0;
+// }
