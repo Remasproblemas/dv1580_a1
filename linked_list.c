@@ -14,7 +14,7 @@
 
 //This function sets up the list and prepares it for operations.
 void list_init(Node** head, size_t size) {
-    mem_init(size);
+    mem_init(size * NODE_SIZE);
     if (!head) {
         *head = NULL;
     }
@@ -28,11 +28,11 @@ void list_insert(Node** head, uint16_t data) {
       printf("Failed to allocate memory for new Node\n");
       return;
     }
-    
+
+    printf("Memory allocation successfull\n");
     *head = new_node;
     new_node->data = data;
     new_node->next = NULL;
-
   } else {
   
     Node *current = *head;
@@ -43,6 +43,7 @@ void list_insert(Node** head, uint16_t data) {
     Node *new_node = (Node*) mem_alloc(NODE_SIZE);
     if (new_node == NULL){
       printf("Failed to allocate memory for new Node\n");
+      printf("I AM HERE\n");
       return;
     }
 

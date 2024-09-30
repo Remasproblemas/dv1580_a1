@@ -17,21 +17,18 @@ typedef struct MemoryBlock {
 //Pointer to the head of the linked list of memory blocks
 MemoryBlock *global_block = NULL;
 
-// Static array to use when requesting memory of zero bytes.
-static char zero_allocation[1];
-
 void mem_init(size_t size) {
     if(size <= BLOCK_SIZE){
         return;
     }
     
-    global_block = (MemoryBlock*) malloc(size);
+    global_block = (MemoryBlock*) malloc(size * BLOCK_SIZE);
 
     if(NULL == global_block){
         return;
     }
     
-    global_block->size = size - BLOCK_SIZE;
+    global_block->size = size;
     global_block->free = 1;
     global_block->next = NULL;
 }
@@ -49,16 +46,24 @@ MemoryBlock* find_free_block(size_t size) {
     return NULL;
 }
 
-void* mem_alloc(size_t size){
-    if(size == 0) {
-        return zero_allocation; 
+void print_memory_pool() {
+    MemoryBlock* current_block = global_block;
+    printf("Memory Pool:\n");
+    while (current_block != NULL) {
+        printf("Block at %p | Size: %zu | Is Empty: %d | Next: %p\n", 
+        (void*)current_block,
+        current_block->size,
+        current_block->free,
+        (void*)current_block->next);
+        current_block = current_block->next;
     }
-    
-    if (size > BLOCK_SIZE){
-        size -= BLOCK_SIZE;
-    }
+}
 
+void* mem_alloc(size_t size){
     MemoryBlock *block = find_free_block(size);    
+    if(size == 0) {
+        return (char*)block + BLOCK_SIZE; 
+    }
 
     if(!block) {
         return NULL;
@@ -68,14 +73,12 @@ void* mem_alloc(size_t size){
 
     // Split the block if it's larger than needed
     if(block->size >= size + BLOCK_SIZE){
-        printf("\nCurrent Block size: %ld\n", block->size);
         MemoryBlock *new_block = (MemoryBlock*)((char*)block + BLOCK_SIZE + size); //(char*) is used so we move byte by byte instead of in chunks
-        new_block->size = block->size - size - BLOCK_SIZE;
+        new_block->size = block->size - size;
         new_block->free = 1;
         new_block->next = block->next;   // Link the new block to the next
         block->size = size;              // Adjust the current block size
         block->next = new_block;
-        printf("New Block size: %ld\n", new_block->size);
     }
     return (char*)block + BLOCK_SIZE;
 }
