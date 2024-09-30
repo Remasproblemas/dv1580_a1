@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 
+
 //MemoryBlock structure
 typedef struct MemoryBlock {
     size_t size; //size in bytes
@@ -23,7 +24,7 @@ void mem_init(size_t size) {
     if(size <= BLOCK_SIZE){
         return;
     }
-
+    
     global_block = (MemoryBlock*) malloc(size);
 
     if(NULL == global_block){
@@ -50,18 +51,14 @@ MemoryBlock* find_free_block(size_t size) {
 
 void* mem_alloc(size_t size){
     if(size == 0) {
-        return (void*)zero_allocation; 
+        return zero_allocation; 
     }
-
-    if(size < 0) {
-        return NULL;    
-    }
-
+    
     if (size > BLOCK_SIZE){
         size -= BLOCK_SIZE;
     }
 
-    MemoryBlock *block = find_free_block(size);
+    MemoryBlock *block = find_free_block(size);    
 
     if(!block) {
         return NULL;
@@ -71,14 +68,15 @@ void* mem_alloc(size_t size){
 
     // Split the block if it's larger than needed
     if(block->size >= size + BLOCK_SIZE){
+        printf("\nCurrent Block size: %ld\n", block->size);
         MemoryBlock *new_block = (MemoryBlock*)((char*)block + BLOCK_SIZE + size); //(char*) is used so we move byte by byte instead of in chunks
         new_block->size = block->size - size - BLOCK_SIZE;
         new_block->free = 1;
         new_block->next = block->next;   // Link the new block to the next
         block->size = size;              // Adjust the current block size
         block->next = new_block;
+        printf("New Block size: %ld\n", new_block->size);
     }
-
     return (char*)block + BLOCK_SIZE;
 }
 
@@ -131,22 +129,21 @@ void mem_deinit(){
 }
 
 
-// int main(void){
+int main(void){
 
-//     mem_init(1024); // Initialize the memory pool with 1KB
+    mem_init(1024); // Initialize the memory pool with 1KB
 
-//     void *block0 = mem_alloc(0); // Edge case: zero allocation
-//     assert(block0 == NULL);      // Depending on handling, this could also be NULL
+    void *block0 = mem_alloc(0); // Edge case: zero allocation
+    assert(block0 != NULL);      // Depending on handling, this could also be NULL
 
-//     void *block1 = mem_alloc(1024); // Exactly remaining
-//     assert(block1 != NULL);
-
-//     void *block2 = mem_alloc(1); // Attempt to allocate with no space left
-//     assert(block2 == NULL);
-
-//     mem_free(block0);
-//     mem_free(block1);
-//     mem_deinit();
+    void *block1 = mem_alloc(200); // Exactly remaining
+    assert(block1 != NULL);
+    assert(block0 == block1);
     
-//     return 0;
-// }
+
+    mem_free(block0);
+    mem_free(block1);
+    mem_deinit();
+    
+    return 0;
+}

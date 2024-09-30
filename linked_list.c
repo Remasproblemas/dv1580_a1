@@ -23,7 +23,7 @@ void list_init(Node** head, size_t size) {
 //Adds a new node with the specified data at end of the linked list. 
 void list_insert(Node** head, uint16_t data) {
   if (*head == NULL) {
-    Node *new_node = (Node*) mem_alloc(NODE_SIZE); // ALLOCATE MEMORY FOR THE NEW NODE
+    Node *new_node = (Node*) mem_alloc(data); // ALLOCATE MEMORY FOR THE NEW NODE
     if (new_node == NULL) {
       printf("Failed to allocate memory for new Node\n");
       return;
@@ -219,27 +219,10 @@ void list_cleanup(Node** head) {
 
 //   printf("Size of Node %ld\n", NODE_SIZE);
 //   Node *head = NULL;
-//   list_init(&head, 1024);
+//   list_init(&head, 32);
 //   list_insert(&head, 10);
 //   list_insert(&head, 20);
 //   list_display(&head);
-//   Node *after_node = list_search(&head, 20);
-//   list_insert_after(after_node, 40);
-//   Node *before_node = list_search(&head, 40);
-//   list_display(&head);
-//   list_insert_before(&head, before_node, 30);
-//   list_display(&head);
-//   list_delete(&head, 30);
-//   list_display(&head);
-//   list_insert(&head, 50);
-//   list_insert(&head, 60);
-//   list_insert(&head, 70);
-//   list_insert(&head, 80);
-//   list_insert(&head, 90);
-//   Node *end_node = list_search(&head, 60);
-//   list_display_range(&head, NULL, NULL);
-//   int node_count = list_count_nodes(&head);
-//   printf("Node Count: %d\n", node_count);
 //   list_cleanup(&head);
 //   list_display(&head);
 

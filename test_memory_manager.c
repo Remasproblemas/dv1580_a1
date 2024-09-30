@@ -177,6 +177,7 @@ void test_frequent_small_allocations()
 
     for (int i = 0; i < num_allocations; i++)
     {
+        // printf("\nROUND: %d", i+1);
         blocks[i] = mem_alloc(10); // Small allocations
         my_assert(blocks[i] != NULL);
     }
