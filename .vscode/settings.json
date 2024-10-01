@@ -6,6 +6,8 @@
         "new": "c",
         "typeinfo": "c",
         "stdint.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "common_defs.h": "c",
+        "gitdata.h": "c"
     }
 }
