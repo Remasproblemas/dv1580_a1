@@ -276,7 +276,6 @@ void test_list_display()
 #ifdef DEBUG
         printf("We have a problem Huston.\n");
         printf("Fixed ,] issue.\n");
-        a
 #endif
     }
 
@@ -290,8 +289,8 @@ void test_list_display()
     //    printf("RefRandom: '%s' \n\n", stringRandom);
 
     char buffer[1024] = {0}; // Buffer to capture the output
+
     // Test case 1: Displaying full list
-    printf("\nI AM HERE\n");
     capture_stdout(buffer, sizeof(buffer), (void (*)(Node **, Node *, Node *))list_display_range, &head, NULL, NULL);
     my_assert(strcmp(buffer, stringFull) == 0);
     printf("\tFull list: %s\n", buffer);
