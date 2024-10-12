@@ -3,11 +3,13 @@
 #include <string.h>
 #include <assert.h>
 
+void print_memory_blocks();
 
 // MemoryBlock structure
 typedef struct MemoryBlock {
     size_t size; // Size in bytes
-    int free; //Indicates if the block is free, 1 for True, 0 for False
+    int free; // Indicates if the block is free, 1 for True, 0 for False
+    void *data; // Pointer to the actual data
     struct MemoryBlock *next; // Pointer to the next MemoryBlock
 } MemoryBlock;
 
@@ -19,21 +21,18 @@ MemoryBlock *global_block = NULL;
 
 // Initializes the memory pool with the given size
 void mem_init(size_t size) {
-    if(size <= BLOCK_SIZE){
-        // If the size smaller or equal to the metadata, exit
-        return;
-    }
-    
-    // Allocate the memory for the entire pool, multiply size with BLOCK_SIZE to ensure that there is enough space.
-    global_block = (MemoryBlock*) malloc(size * BLOCK_SIZE);
+    // Allocate the memory for the memory block itself.
+    global_block = (MemoryBlock*) malloc(BLOCK_SIZE);
 
     if(global_block == NULL){
         // If the allocation fails, exit
+        printf("Failed to allocate global_block");
         return;
     }
     
     // Set the size for the global block, set it to be free and add a null pointer to indicate it is the last in the list (for now).
     global_block->size = size;
+    global_block->data = malloc(size); // Allocate the size we want to use.
     global_block->free = 1;
     global_block->next = NULL;
 }
@@ -60,11 +59,12 @@ void* mem_alloc(size_t size){
     
     // If requested size is 0, return pointer to the metadata.
     if(size == 0) {
-        return (char*)block + BLOCK_SIZE; 
+        return block->data; 
     }
 
     // If no block is found return NULL
     if(!block) {
+        // printf("\nNo block was found!\n");
         return NULL;
     }
 
@@ -72,22 +72,33 @@ void* mem_alloc(size_t size){
     block->free = 0;
 
     // Split the block if it's larger than needed
-    if(block->size >= size + BLOCK_SIZE){
-        MemoryBlock *new_block = (MemoryBlock*)((char*)block + BLOCK_SIZE + size);
-    
+    if(block->size > size){
+        MemoryBlock *new_block = (MemoryBlock*) malloc(BLOCK_SIZE);
         new_block->size = block->size - size; // Set size of the new block to be the remaining space
+        new_block->data = (char*)block->data + size; // Allocate new_block->data to be after current block->data
         new_block->free = 1;                // Mark it as free
-        new_block->next = block->next;   // Link the new block to the next
-        block->size = size;              // Adjust the current block size
-        block->next = new_block;        // Have the current block point to the new one.
+        new_block->next = block->next;     // Link the new block to the next
+
+        block->size = size;               // Adjust the current block size
+        block->next = new_block;         // Have the current block point to the new one.
     }
     // Return a pointer to the usable memory (after the metadata)
-    return (char*)block + BLOCK_SIZE;
+    return block->data;
 }
 
 // Helper function for mem_free
-MemoryBlock* get_block_ptr(void *block) {
-    return (MemoryBlock*) block - 1; //returns the pointer to the metadata of said block
+MemoryBlock* get_block_ptr(void *data_ptr) {
+    MemoryBlock *current = global_block;
+
+    // Iterate through the linked list of blocks to find the matching data pointer
+    while (current != NULL) {
+        if (current->data == data_ptr) {
+            return current;
+        }
+        current = current->next;
+    }
+
+    return NULL; // Return NULL if no matching block is found
 }
 
 // Function to free allocated blocks
@@ -99,23 +110,31 @@ void mem_free(void* block) {
     
     // Get the pointer for the metadata
     MemoryBlock *block_ptr = get_block_ptr(block);
-    block_ptr -> free = 1; // Mark it as free
+    if (!block_ptr) {
+        printf("Error: Trying to free invalid pointer!\n");
+        return;
+    }
+    // printf("Freeing block: %p, size: %zu\n", block_ptr, block_ptr->size);
+
+    block_ptr->free = 1; // Mark it as free
 
     // Merge with the next block if it's free
     if (block_ptr->next && block_ptr->next->free) {
-        block_ptr->size += BLOCK_SIZE + block_ptr->next->size;
-        block_ptr->next = block_ptr->next->next; // Remove the next block from the list
+        block_ptr->size += block_ptr->next->size; // Combine sizes
+        MemoryBlock *temp = block_ptr->next; // Save the block being removed
+        block_ptr->next = block_ptr->next->next; // Link to the next of the next block
+        free(temp); // Free the memory of the merged block
     }
 }
 
 // Resizes the given block to the requested size
 void* mem_resize(void* block, size_t size){
     // If block is NULL, allocate a new block
-    if (!block){
+    if (!block){    
         block = mem_alloc(size);
     }
 
-    // Get the block's metadata
+    // Get the block
     MemoryBlock *block_ptr = get_block_ptr(block);
     
     // If the block is already big enough, return the same block
@@ -126,7 +145,7 @@ void* mem_resize(void* block, size_t size){
     // Allocate a new block of the requested size
     void *new_block_ptr = mem_alloc(size);
 
-    // If allocation fails, retun NULL
+    // If allocation fails, return NULL
     if(!new_block_ptr){
         return NULL;
     }
@@ -139,8 +158,45 @@ void* mem_resize(void* block, size_t size){
 
 // Frees the entire memory pool and deinitializes the memory pool
 void mem_deinit(){
-    if(global_block != NULL){
-        free(global_block); // Free the memory pool
-        global_block = NULL; // The the "head" to NULL 
+    
+    MemoryBlock *current = global_block;
+    MemoryBlock *next;
+
+    while (current != NULL) {
+        // printf("Deinitializing block: %p, size: %zu\n", current, current->size);
+        next = current->next;  // Save pointer to the next block
+        
+        if (!next){
+            free(current);
+            break;
+        }
+
+        if (current) {
+            // printf("Freeing data for block: %p\n", current);
+            free(current);  // Free the data if allocated separately
+        }
+
+        current = next;  // Move to the next block
+    }
+    
+    global_block = NULL;  // Set the head to NULL
+}
+
+void print_memory_blocks() {
+    MemoryBlock *current = global_block; // Start from the head of the list
+
+    // Print the header
+    printf("Current Memory Blocks:\n");
+    printf("%-20s %-10s %-10s %-10s\n", "Address", "Size", "Free", "Data Ptr");
+    printf("----------------------------------------------\n");
+
+    // Iterate through the list of memory blocks and print details
+    while (current != NULL) {
+        printf("%-20p %-10zu %-10d %-10p\n",
+               (void*)current, // Address of the memory block
+               current->size,  // Size of the block
+               current->free,  // Whether the block is free (1 for true, 0 for false)
+               current->data); // Pointer to the data
+        current = current->next; // Move to the next block
     }
 }

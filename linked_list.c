@@ -15,7 +15,7 @@
 //This function sets up the list and prepares it for operations.
 void list_init(Node** head, size_t size) {
     // Uses the mem_init function and multiplies size by NODE_SIZE to ensure there is enough memory
-    mem_init(size * NODE_SIZE);
+    mem_init(size);
     if (!head) {
         *head = NULL;
     }
