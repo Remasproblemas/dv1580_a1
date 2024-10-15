@@ -60,15 +60,13 @@ MemoryBlock* find_free_block(size_t size) {
 }
 
 // Allocates requested size to a memory_block and puts the remaining space into a new_block 
-void* mem_alloc(size_t size){
-    pthread_mutex_lock(&memory_mutex);
+void* mem_alloc_internal(size_t size){
 
     // Find a free memory block
     MemoryBlock *block = find_free_block(size);    
     
     // If requested size is 0, return pointer to the metadata.
     if(size == 0 || block) {
-        pthread_mutex_unlock(&memory_mutex);
         return block ? block->data : NULL; 
     }
 
@@ -87,9 +85,16 @@ void* mem_alloc(size_t size){
         block->next = new_block;         // Have the current block point to the new one.
     }
 
-    pthread_mutex_unlock(&memory_mutex);
     // Return a pointer to the usable memory (after the metadata)
     return block->data;
+}
+
+// Public Function, calls the internal memory_allocator.
+void* mem_alloc(size_t size){
+    pthread_mutex_lock(&memory_mutex);
+    void* block_ptr = mem_alloc_internal(size);
+    pthread_mutex_unlock(&memory_mutex);
+    return block_ptr;
 }
 
 // Helper function for mem_free
@@ -108,11 +113,9 @@ MemoryBlock* get_block_ptr(void *data_ptr) {
 }
 
 // Function to free allocated blocks
-void mem_free(void* block) {
-    pthread_mutex_lock(&memory_mutex);
+void mem_free_internal(void* block) {
     // If no block given, simply go back
     if (!block){
-        pthread_mutex_unlock(&memory_mutex);
         return;
     }
     
@@ -120,7 +123,6 @@ void mem_free(void* block) {
     MemoryBlock *block_ptr = get_block_ptr(block);
     if (!block_ptr) {
         printf("Error: Trying to free invalid pointer!\n");
-        pthread_mutex_unlock(&memory_mutex);
         return;
     }
     // printf("Freeing block: %p, size: %zu\n", block_ptr, block_ptr->size);
@@ -134,6 +136,12 @@ void mem_free(void* block) {
         block_ptr->next = block_ptr->next->next; // Link to the next of the next block
         free(temp); // Free the memory of the merged block
     }
+}
+
+// Public function, calls mem_free_internal
+void* mem_free(void* block){
+    pthread_mutex_lock(&memory_mutex);
+    mem_free_internal(block);
     pthread_mutex_unlock(&memory_mutex);
 }
 
@@ -142,8 +150,8 @@ void* mem_resize(void* block, size_t size){
     // If block is NULL, allocate a new block
     pthread_mutex_lock(&memory_mutex);
     if (!block){    
+        block = mem_alloc_internal(size);
         pthread_mutex_unlock(&memory_mutex);
-        block = mem_alloc(size);
     }
 
     // Get the block
@@ -156,9 +164,8 @@ void* mem_resize(void* block, size_t size){
     }
     
     // Allocate a new block of the requested size
-    pthread_mutex_unlock(&memory_mutex);
-    void *new_block_ptr = mem_alloc(size);
-    pthread_mutex_lock(&memory_mutex);
+
+    void *new_block_ptr = mem_alloc_internal(size);
 
     // If allocation fails, return NULL
     if(!new_block_ptr){
@@ -168,14 +175,14 @@ void* mem_resize(void* block, size_t size){
 
     // Copy the data from the old block to the new.
     memcpy(new_block_ptr, block, block_ptr->size);
+    mem_free_internal(block); // Free old block
     pthread_mutex_unlock(&memory_mutex);
-    mem_free(block); // Free old block
     return new_block_ptr;
 }
 
 // Frees the entire memory pool and deinitializes the memory pool
 void mem_deinit(){
-    
+    pthread_mutex_lock(&memory_mutex);
     MemoryBlock *current = global_block;
     MemoryBlock *next;
 
@@ -196,6 +203,7 @@ void mem_deinit(){
     }
     
     global_block = NULL;  // Set the head to NULL
+    pthread_mutex_unlock(&memory_mutex);
 }
 
 // Purely for debugging purposes
