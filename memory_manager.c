@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
+
+
+pthread_mutex_t memory_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void print_memory_blocks();
 
@@ -21,12 +25,14 @@ MemoryBlock *global_block = NULL;
 
 // Initializes the memory pool with the given size
 void mem_init(size_t size) {
+    pthread_mutex_lock(&memory_mutex);
     // Allocate the memory for the memory block itself.
     global_block = (MemoryBlock*) malloc(BLOCK_SIZE);
 
     if(global_block == NULL){
         // If the allocation fails, exit
         printf("Failed to allocate global_block");
+        pthread_mutex_unlock(&memory_mutex);
         return;
     }
     
@@ -35,6 +41,7 @@ void mem_init(size_t size) {
     global_block->data = malloc(size); // Allocate the size we want to use.
     global_block->free = 1;
     global_block->next = NULL;
+    pthread_mutex_unlock(&memory_mutex);
 }
 
 // Helper Function for mem_alloc
@@ -54,18 +61,15 @@ MemoryBlock* find_free_block(size_t size) {
 
 // Allocates requested size to a memory_block and puts the remaining space into a new_block 
 void* mem_alloc(size_t size){
+    pthread_mutex_lock(&memory_mutex);
+
     // Find a free memory block
     MemoryBlock *block = find_free_block(size);    
     
     // If requested size is 0, return pointer to the metadata.
-    if(size == 0) {
-        return block->data; 
-    }
-
-    // If no block is found return NULL
-    if(!block) {
-        // printf("\nNo block was found!\n");
-        return NULL;
+    if(size == 0 || block) {
+        pthread_mutex_unlock(&memory_mutex);
+        return block ? block->data : NULL; 
     }
 
     // Mark the block as allocated.
@@ -82,6 +86,8 @@ void* mem_alloc(size_t size){
         block->size = size;               // Adjust the current block size
         block->next = new_block;         // Have the current block point to the new one.
     }
+
+    pthread_mutex_unlock(&memory_mutex);
     // Return a pointer to the usable memory (after the metadata)
     return block->data;
 }
@@ -103,8 +109,10 @@ MemoryBlock* get_block_ptr(void *data_ptr) {
 
 // Function to free allocated blocks
 void mem_free(void* block) {
+    pthread_mutex_lock(&memory_mutex);
     // If no block given, simply go back
     if (!block){
+        pthread_mutex_unlock(&memory_mutex);
         return;
     }
     
@@ -112,6 +120,7 @@ void mem_free(void* block) {
     MemoryBlock *block_ptr = get_block_ptr(block);
     if (!block_ptr) {
         printf("Error: Trying to free invalid pointer!\n");
+        pthread_mutex_unlock(&memory_mutex);
         return;
     }
     // printf("Freeing block: %p, size: %zu\n", block_ptr, block_ptr->size);
@@ -125,12 +134,15 @@ void mem_free(void* block) {
         block_ptr->next = block_ptr->next->next; // Link to the next of the next block
         free(temp); // Free the memory of the merged block
     }
+    pthread_mutex_unlock(&memory_mutex);
 }
 
 // Resizes the given block to the requested size
 void* mem_resize(void* block, size_t size){
     // If block is NULL, allocate a new block
+    pthread_mutex_lock(&memory_mutex);
     if (!block){    
+        pthread_mutex_unlock(&memory_mutex);
         block = mem_alloc(size);
     }
 
@@ -139,19 +151,24 @@ void* mem_resize(void* block, size_t size){
     
     // If the block is already big enough, return the same block
     if(block_ptr->size >= size){
+        pthread_mutex_unlock(&memory_mutex);
         return block;
     }
     
     // Allocate a new block of the requested size
+    pthread_mutex_unlock(&memory_mutex);
     void *new_block_ptr = mem_alloc(size);
+    pthread_mutex_lock(&memory_mutex);
 
     // If allocation fails, return NULL
     if(!new_block_ptr){
+        pthread_mutex_unlock(&memory_mutex);
         return NULL;
     }
 
     // Copy the data from the old block to the new.
     memcpy(new_block_ptr, block, block_ptr->size);
+    pthread_mutex_unlock(&memory_mutex);
     mem_free(block); // Free old block
     return new_block_ptr;
 }
@@ -175,13 +192,13 @@ void mem_deinit(){
             // printf("Freeing data for block: %p\n", current);
             free(current);  // Free the data if allocated separately
         }
-
         current = next;  // Move to the next block
     }
     
     global_block = NULL;  // Set the head to NULL
 }
 
+// Purely for debugging purposes
 void print_memory_blocks() {
     MemoryBlock *current = global_block; // Start from the head of the list
 
