@@ -139,7 +139,7 @@ void mem_free_internal(void* block) {
 }
 
 // Public function, calls mem_free_internal
-void* mem_free(void* block){
+void mem_free(void* block){
     pthread_mutex_lock(&memory_mutex);
     mem_free_internal(block);
     pthread_mutex_unlock(&memory_mutex);

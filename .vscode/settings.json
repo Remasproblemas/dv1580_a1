@@ -8,6 +8,7 @@
         "stdint.h": "c",
         "stdlib.h": "c",
         "common_defs.h": "c",
-        "gitdata.h": "c"
+        "gitdata.h": "c",
+        "memory_manager.h": "c"
     }
 }
